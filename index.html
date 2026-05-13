@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quotation — Live Preview</title>
+<style>
+  * { box-sizing: border-box; }
+  body, html { margin: 0; padding: 0; background: #f5f4f0; color: #1a1a1a; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-feature-settings: 'ss01', 'cv11'; }
+  .app { display: grid; grid-template-columns: 360px 1fr; min-height: 100vh; }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .panel { max-height: none; border-right: none; border-bottom: 1px solid #eae8e1; }
+    .preview-wrap { max-height: none; padding: 24px 16px; }
+    .doc { padding: 32px 24px !important; min-height: auto !important; }
+    .doc-header { margin-bottom: 32px !important; }
+    .doc-title-block { margin-bottom: 32px !important; }
+    .doc-info-grid { grid-template-columns: 1fr !important; gap: 24px !important; margin-bottom: 32px !important; padding-bottom: 24px !important; }
+    .doc-title { font-size: 28px !important; }
+    .doc-totals-wrap { grid-template-columns: 1fr !important; gap: 16px !important; margin-bottom: 32px !important; }
+    .doc-block-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+    .scope-item { grid-template-columns: 32px 1fr !important; gap: 12px !important; }
+    .scope-item .s-meta, .scope-item .s-amount { grid-column: 2; text-align: left !important; display: flex; gap: 8px; align-items: baseline; }
+    .doc-footer { grid-template-columns: 1fr !important; gap: 12px !important; }
+    .doc-footer > div:last-child { text-align: left !important; }
+  }
+
+  /* LEFT PANEL */
+  .panel { background: #ffffff; border-right: 1px solid #eae8e1; overflow-y: auto; max-height: 100vh; }
+  .panel-inner { padding: 28px 24px 80px; }
+
+  .brand-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+  .brand { font-family: 'Fraunces', 'Playfair Display', Georgia, serif; font-size: 19px; font-weight: 400; letter-spacing: -0.02em; }
+  .brand .dot { color: #c1440e; }
+  .lang-toggle { display: inline-flex; background: #f5f4f0; border-radius: 999px; padding: 3px; gap: 2px; }
+  .lang-toggle button { padding: 4px 12px; font-size: 11px; border: none; background: transparent; border-radius: 999px; cursor: pointer; color: #7a7770; font-family: inherit; font-weight: 500; letter-spacing: 0.04em; }
+  .lang-toggle button.active { background: #1a1a1a; color: #ffffff; }
+
+  .seg { display: inline-flex; background: #f5f4f0; border-radius: 6px; padding: 2px; gap: 2px; width: 100%; margin-bottom: 14px; }
+  .seg button { flex: 1; padding: 6px 8px; font-size: 10px; border: none; background: transparent; border-radius: 4px; cursor: pointer; color: #7a7770; font-family: inherit; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+  .seg button.active { background: #ffffff; color: #1a1a1a; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+  .toolbar { display: flex; gap: 8px; margin-bottom: 32px; }
+  .btn { font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; border-radius: 6px; padding: 10px 14px; transition: all 0.15s; letter-spacing: 0.01em; display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
+  .btn-primary { flex: 1; background: #1a1a1a; color: #ffffff; border: 1px solid #1a1a1a; }
+  .btn-primary:hover { background: #c1440e; border-color: #c1440e; }
+  .btn-ghost { background: transparent; color: #7a7770; border: 1px solid #eae8e1; padding: 10px; }
+  .btn-ghost:hover { color: #1a1a1a; border-color: #1a1a1a; }
+
+  .section { margin-bottom: 32px; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #eae8e1; }
+  .section-title { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #1a1a1a; margin: 0; }
+  .section-meta { font-size: 10px; color: #a8a59c; font-weight: 400; }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 10px; color: #7a7770; margin-bottom: 5px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 500; }
+  .field input, .field textarea, .field select {
+    width: 100%; font-family: inherit; font-size: 13px; color: #1a1a1a;
+    background: transparent; border: none; border-bottom: 1px solid #eae8e1;
+    padding: 6px 0; transition: border-color 0.15s; outline: none;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus { border-bottom-color: #1a1a1a; }
+  .field input::placeholder, .field textarea::placeholder { color: #c4c1b7; }
+  .field textarea { min-height: 56px; resize: vertical; line-height: 1.5; }
+  .field select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='%237a7770' stroke-width='1.2' d='M1 1l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 4px center; padding-right: 20px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
+  .toggle-row span { font-size: 12px; color: #1a1a1a; }
+  .switch { position: relative; width: 32px; height: 18px; background: #e0ddd5; border-radius: 999px; cursor: pointer; transition: background 0.15s; flex-shrink: 0; }
+  .switch.on { background: #1a1a1a; }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: white; border-radius: 50%; transition: left 0.15s; }
+  .switch.on::after { left: 16px; }
+
+  .scope-card { padding: 14px 0; border-top: 1px solid #eae8e1; }
+  .scope-card:first-child { border-top: none; padding-top: 4px; }
+  .scope-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .scope-num { font-family: 'Fraunces', Georgia, serif; font-size: 13px; color: #c1440e; font-weight: 400; font-style: italic; }
+  .scope-total-mini { font-size: 11px; color: #7a7770; }
+  .scope-total-mini b { color: #1a1a1a; font-weight: 500; font-family: 'Fraunces', Georgia, serif; font-style: normal; }
+  .icon-btn { background: transparent; border: none; cursor: pointer; color: #a8a59c; padding: 2px; font-size: 13px; line-height: 1; }
+  .icon-btn:hover { color: #c1440e; }
+
+  .add-btn { width: 100%; margin-top: 12px; padding: 9px; border: 1px dashed #d4d1c8; background: transparent; border-radius: 6px; color: #7a7770; font-size: 11px; cursor: pointer; font-family: inherit; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 500; transition: all 0.15s; }
+  .add-btn:hover { border-color: #1a1a1a; color: #1a1a1a; border-style: solid; }
+
+  .deliv-list { margin-top: 4px; }
+  .deliv-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid #f0eee7; }
+  .deliv-row:last-of-type { border-bottom: none; }
+  .deliv-row .deliv-bullet { color: #c1440e; font-size: 14px; line-height: 1; flex-shrink: 0; }
+  .deliv-row input { flex: 1; font-family: inherit; font-size: 12px; background: transparent; border: none; padding: 4px 0; outline: none; color: #1a1a1a; }
+  .deliv-row input::placeholder { color: #c4c1b7; }
+  .deliv-add { font-size: 10px; color: #7a7770; padding: 6px 0; cursor: pointer; background: transparent; border: none; font-family: inherit; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 500; }
+  .deliv-add:hover { color: #1a1a1a; }
+  .deliv-section-label { font-size: 10px; color: #7a7770; margin: 12px 0 4px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 500; }
+
+  .logo-upload { display: flex; align-items: center; gap: 12px; padding: 12px; background: #faf9f6; border-radius: 6px; cursor: pointer; border: 1px solid #eae8e1; transition: border-color 0.15s; }
+  .logo-upload:hover { border-color: #1a1a1a; }
+  .logo-upload img { max-width: 70px; max-height: 36px; object-fit: contain; }
+  .logo-upload-text { font-size: 11px; color: #7a7770; letter-spacing: 0.04em; }
+  .logo-upload input { display: none; }
+
+  /* PREVIEW */
+  .preview-wrap { padding: 40px 48px; overflow-y: auto; max-height: 100vh; background: #f5f4f0; }
+  .preview-header { max-width: 794px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: center; }
+  .preview-header h1 { font-family: 'Fraunces', Georgia, serif; font-size: 22px; font-weight: 400; margin: 0; letter-spacing: -0.01em; }
+  .preview-header h1 em { color: #c1440e; font-style: italic; }
+  .preview-header .preview-meta { font-size: 11px; color: #7a7770; letter-spacing: 0.04em; text-transform: uppercase; }
+
+  /* DOCUMENT */
+  .doc {
+    background: #ffffff; width: 100%; max-width: 794px; margin: 0 auto;
+    padding: 64px 72px; color: #1a1a1a; font-family: 'Inter', sans-serif;
+    font-size: 10.5px; line-height: 1.55;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.04);
+    min-height: 1123px;
+  }
+  .doc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 56px; }
+  .doc-logo { max-width: 140px; max-height: 56px; object-fit: contain; }
+  .doc-logo-text { font-family: 'Fraunces', Georgia, serif; font-size: 26px; font-weight: 400; color: #1a1a1a; letter-spacing: -0.02em; }
+  .doc-logo-text em { color: #c1440e; font-style: italic; }
+  .doc-mark-num { text-align: right; }
+  .doc-mark-num .label { font-size: 9px; color: #a8a59c; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
+  .doc-mark-num .value { font-family: 'Fraunces', Georgia, serif; font-size: 14px; font-weight: 400; color: #1a1a1a; letter-spacing: 0.02em; }
+
+  .doc-title-block { margin-bottom: 56px; }
+  .doc-eyebrow { font-size: 9px; color: #c1440e; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600; margin-bottom: 14px; }
+  .doc-title { font-family: 'Fraunces', Georgia, serif; font-size: 40px; font-weight: 300; color: #1a1a1a; line-height: 1.05; letter-spacing: -0.025em; margin: 0 0 4px; }
+  .doc-title em { font-style: italic; color: #c1440e; font-weight: 400; }
+  .doc-subtitle { font-size: 12px; color: #7a7770; line-height: 1.5; margin-top: 12px; max-width: 480px; }
+  .doc-date-line { display: flex; gap: 32px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #eae8e1; }
+  .doc-date-item .label { font-size: 9px; color: #a8a59c; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 3px; }
+  .doc-date-item .value { font-size: 11px; color: #1a1a1a; font-weight: 500; }
+
+  .doc-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-bottom: 56px; padding-bottom: 32px; border-bottom: 1px solid #eae8e1; }
+  .doc-info-label { font-size: 9px; color: #c1440e; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; margin-bottom: 12px; }
+  .doc-info-name { font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 6px; line-height: 1.3; }
+  .doc-info-body { font-size: 10.5px; line-height: 1.7; color: #4a4843; white-space: pre-line; }
+
+  .doc-section-eyebrow { font-size: 9px; color: #c1440e; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600; margin-bottom: 8px; }
+  .doc-section-heading { font-family: 'Fraunces', Georgia, serif; font-size: 22px; font-weight: 400; color: #1a1a1a; margin: 0 0 24px; letter-spacing: -0.01em; }
+
+  .scope-list-doc { margin-bottom: 40px; }
+  .scope-item {
+    display: grid; grid-template-columns: 40px 1fr 80px 110px; gap: 20px;
+    padding: 20px 0; border-top: 1px solid #eae8e1; align-items: start;
+  }
+  .scope-item.package { grid-template-columns: 40px 1fr; }
+  .scope-item:last-child { border-bottom: 1px solid #1a1a1a; }
+  .scope-item .s-num { font-family: 'Fraunces', Georgia, serif; font-size: 15px; color: #c1440e; font-style: italic; font-weight: 400; line-height: 1.4; }
+  .scope-item .s-content .s-title { font-size: 12px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; letter-spacing: -0.01em; }
+  .scope-item .s-content .s-desc { font-size: 10.5px; color: #6b6864; line-height: 1.6; white-space: pre-line; }
+  .scope-item .s-content .s-deliv { list-style: none; padding: 0; margin: 8px 0 0; }
+  .scope-item .s-content .s-deliv li { font-size: 10px; color: #4a4843; line-height: 1.65; padding: 3px 0 3px 14px; position: relative; }
+  .scope-item .s-content .s-deliv li::before { content: '—'; position: absolute; left: 0; color: #c1440e; font-weight: 400; }
+  .scope-item .s-meta { text-align: right; }
+  .scope-item .s-meta .s-meta-label, .scope-item .s-amount .s-amount-label { font-size: 9px; color: #a8a59c; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 2px; }
+  .scope-item .s-meta .s-meta-value { font-family: 'Fraunces', Georgia, serif; font-size: 14px; font-weight: 400; color: #1a1a1a; }
+  .scope-item .s-amount { text-align: right; }
+  .scope-item .s-amount .s-amount-value { font-family: 'Fraunces', Georgia, serif; font-size: 15px; font-weight: 500; color: #1a1a1a; }
+
+  .doc-totals-wrap { display: grid; grid-template-columns: 1fr 320px; gap: 40px; margin-bottom: 56px; }
+  .doc-totals-aside { font-size: 10px; color: #7a7770; line-height: 1.7; padding-top: 4px; }
+  .doc-totals-aside .label { font-size: 9px; color: #c1440e; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; margin-bottom: 6px; }
+  .doc-totals-table { width: 100%; }
+  .doc-totals-table tr td { padding: 8px 0; font-size: 11px; }
+  .doc-totals-table tr td:first-child { color: #6b6864; }
+  .doc-totals-table tr td:last-child { text-align: right; color: #1a1a1a; font-family: 'Fraunces', Georgia, serif; font-size: 13px; }
+  .doc-totals-table tr.divider td { border-top: 1px solid #eae8e1; padding-top: 12px; }
+  .doc-totals-table tr.total td { padding-top: 16px; border-top: 1px solid #1a1a1a; }
+  .doc-totals-table tr.total td:first-child { font-size: 11px; color: #1a1a1a; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+  .doc-totals-table tr.total td:last-child { font-family: 'Fraunces', Georgia, serif; font-size: 26px; font-weight: 400; letter-spacing: -0.01em; color: #1a1a1a; }
+  .doc-totals-table tr.total td:last-child em { color: #c1440e; font-style: italic; }
+
+  .doc-block { margin-bottom: 36px; }
+  .doc-block-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 32px; }
+  .doc-block-label { font-size: 9px; color: #c1440e; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600; padding-top: 4px; }
+  .doc-payment-list { display: flex; flex-direction: column; }
+  .doc-payment-list .p-row { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-bottom: 1px solid #eae8e1; font-size: 11px; }
+  .doc-payment-list .p-row:last-child { border-bottom: none; }
+  .doc-payment-list .p-row .p-label { color: #1a1a1a; }
+  .doc-payment-list .p-row .p-amount { font-family: 'Fraunces', Georgia, serif; font-size: 13px; }
+  .doc-block-body { font-size: 10.5px; line-height: 1.7; color: #4a4843; white-space: pre-line; }
+
+  .doc-footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid #1a1a1a; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; font-size: 9px; color: #6b6864; line-height: 1.6; letter-spacing: 0.02em; }
+  .doc-footer .ft-label { font-size: 8px; color: #a8a59c; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; font-weight: 600; }
+  .doc-footer .ft-value { color: #1a1a1a; font-size: 10px; }
+  .doc-footer .ft-value.accent { color: #c1440e; }
+
+  @media print {
+    @page { size: A4; margin: 0; }
+    html, body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .panel, .preview-header { display: none !important; }
+    .preview-wrap { padding: 0 !important; max-height: none !important; overflow: visible !important; background: #fff !important; }
+    .app { display: block !important; }
+    .doc { box-shadow: none !important; padding: 48px 56px !important; max-width: none !important; width: 100% !important; min-height: auto !important; margin: 0 !important; page-break-inside: auto; }
+    .scope-item, .doc-block { page-break-inside: avoid; }
+  }
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <div class="panel-inner">
+      <div class="brand-row">
+        <div class="brand">Quotation<span class="dot">.</span></div>
+        <div class="lang-toggle" id="lang-toggle">
+          <button class="active" data-lang="id">ID</button>
+          <button data-lang="en">EN</button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn btn-primary" id="btn-pdf">↓ <span data-i18n="exportPdf">Export PDF</span></button>
+        <button class="btn btn-ghost" id="btn-reset" title="Reset">↻</button>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><p class="section-title" data-i18n="ourCompany">Your studio</p></div>
+        <label class="logo-upload" for="logo-input">
+          <img id="logo-preview" style="display:none" />
+          <span class="logo-upload-text" id="logo-text">↑ <span data-i18n="uploadLogo">Upload logo</span></span>
+          <input type="file" id="logo-input" accept="image/*" />
+        </label>
+        <div style="height:12px"></div>
+        <div class="field"><label data-i18n="companyName">Studio name</label><input id="our-name" placeholder="Natuno Design" /></div>
+        <div class="field"><label data-i18n="address">Address</label><textarea id="our-address"></textarea></div>
+        <div class="row2">
+          <div class="field"><label data-i18n="email">Email</label><input id="our-email" /></div>
+          <div class="field"><label data-i18n="phone">Phone</label><input id="our-phone" /></div>
+        </div>
+        <div class="field"><label data-i18n="taxId">Tax ID / NPWP</label><input id="our-tax" /></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><p class="section-title" data-i18n="clientInfo">Client</p></div>
+        <div class="field"><label data-i18n="recipient">Recipient</label><input id="client-name" /></div>
+        <div class="field"><label data-i18n="clientCompany">Company</label><input id="client-company" /></div>
+        <div class="row2">
+          <div class="field"><label data-i18n="email">Email</label><input id="client-email" /></div>
+          <div class="field"><label data-i18n="phone">Phone</label><input id="client-phone" /></div>
+        </div>
+        <div class="field"><label data-i18n="address">Address</label><textarea id="client-address"></textarea></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><p class="section-title" data-i18n="quoteDetails">Details</p></div>
+        <div class="field"><label data-i18n="projectName">Project name</label><input id="project-name" /></div>
+        <div class="row2">
+          <div class="field"><label data-i18n="quoteNo">Number</label><input id="quote-no" placeholder="Q-2026-001" /></div>
+          <div class="field"><label data-i18n="currency">Currency</label>
+            <select id="currency"><option value="IDR">IDR</option><option value="EUR">EUR</option><option value="USD">USD</option></select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label data-i18n="date">Issued</label><input type="date" id="quote-date" /></div>
+          <div class="field"><label data-i18n="validUntil">Valid until</label><input type="date" id="quote-valid" /></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <p class="section-title" data-i18n="scope">Scope</p>
+          <span class="section-meta" id="scope-count">00</span>
+        </div>
+        <div class="seg" id="pricing-mode">
+          <button class="active" data-mode="breakdown" data-i18n="modeBreakdown">Breakdown</button>
+          <button data-mode="package" data-i18n="modePackage">Package</button>
+        </div>
+        <div id="scope-list"></div>
+        <button class="add-btn" id="add-scope">+ <span data-i18n="addScope">Add scope</span></button>
+        <div id="package-price-wrap" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid #eae8e1">
+          <div class="field"><label data-i18n="packagePrice">Package price</label><input type="number" min="0" id="package-price" placeholder="0" /></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><p class="section-title" data-i18n="adjustments">Adjustments</p></div>
+        <div class="toggle-row"><span data-i18n="showDiscount">Discount</span><div class="switch" id="sw-discount"></div></div>
+        <div id="discount-fields" style="display:none">
+          <div class="row2">
+            <div class="field"><label data-i18n="discountType">Type</label>
+              <select id="discount-type"><option value="percent">%</option><option value="fixed" data-i18n="fixed">Fixed</option></select>
+            </div>
+            <div class="field"><label data-i18n="value">Value</label><input type="number" id="discount-value" value="0" /></div>
+          </div>
+        </div>
+        <div class="toggle-row"><span data-i18n="showTax">Tax</span><div class="switch on" id="sw-tax"></div></div>
+        <div id="tax-fields">
+          <div class="row2">
+            <div class="field"><label data-i18n="taxLabel">Label</label><input id="tax-label" value="PPN" /></div>
+            <div class="field"><label data-i18n="taxRate">Rate %</label><input type="number" id="tax-rate" value="11" /></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <p class="section-title" data-i18n="payment">Payment</p>
+          <span class="section-meta" id="payment-count">00</span>
+        </div>
+        <div id="payment-list"></div>
+        <button class="add-btn" id="add-payment">+ <span data-i18n="addTerm">Add term</span></button>
+        <div class="field" style="margin-top:18px"><label data-i18n="bank">Bank details</label><textarea id="bank-details"></textarea></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><p class="section-title" data-i18n="extras">Extras</p></div>
+        <div class="field"><label data-i18n="notes">Notes</label><textarea id="notes"></textarea></div>
+        <div class="field"><label data-i18n="terms">Terms &amp; conditions</label><textarea id="terms"></textarea></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="preview-wrap">
+    <div class="preview-header">
+      <h1><em>Live</em> preview</h1>
+      <div class="preview-meta" data-i18n="a4Preview">A4 — auto-saved</div>
+    </div>
+    <div class="doc" id="doc"><div style="padding:80px 24px; text-align:center; color:#a8a59c; font-size:12px">Loading preview…</div></div>
+  </main>
+</div>
+
+
+<script>
+window.addEventListener('error', function(e) {
+  console.error('Global error:', e.message, e.error);
+  var doc = document.getElementById('doc');
+  // Show error if doc still has the loading placeholder or is empty
+  if (doc && (doc.dataset.rendered !== '1')) {
+    doc.innerHTML = '<div style="padding:48px; color:#c1440e; font-family:system-ui; font-size:13px; line-height:1.6"><b>Startup error:</b><br>' + (e.message || 'Unknown') + '<br><br>Try clicking the ↻ reset button at the top of the side panel, or refresh the page.</div>';
+  }
+});
+</script>
+<script>
+(function(){
+  const i18n = {
+    id: {
+      exportPdf: 'Unduh PDF', uploadLogo: 'Unggah logo',
+      ourCompany: 'Studio anda', companyName: 'Nama studio', address: 'Alamat', email: 'Email', phone: 'Telepon', taxId: 'NPWP',
+      clientInfo: 'Klien', recipient: 'Penerima', clientCompany: 'Perusahaan',
+      quoteDetails: 'Detail', projectName: 'Nama proyek', quoteNo: 'Nomor', date: 'Tanggal terbit', validUntil: 'Berlaku hingga', currency: 'Mata uang',
+      scope: 'Lingkup', addScope: 'Tambah lingkup',
+      scopeDetails: 'Detail lingkup', deliverables: 'Deliverables',
+      modeBreakdown: 'Rincian', modePackage: 'Paket',
+      packagePrice: 'Harga paket',
+      adjustments: 'Penyesuaian', showDiscount: 'Diskon', discountType: 'Tipe', value: 'Nilai', fixed: 'Tetap',
+      showTax: 'Pajak', taxLabel: 'Label', taxRate: 'Tarif %',
+      payment: 'Pembayaran', addTerm: 'Tambah termin', bank: 'Rekening',
+      extras: 'Tambahan', notes: 'Catatan', terms: 'Syarat & ketentuan',
+      a4Preview: 'A4 — tersimpan otomatis',
+      eyebrowQuote: 'Penawaran',
+      titlePart1: 'Penawaran', titlePart2: 'proyek',
+      preparedFor: 'Disiapkan untuk', preparedBy: 'Disiapkan oleh',
+      issuedOn: 'Tanggal terbit', validUntilDoc: 'Berlaku hingga', quoteRefDoc: 'Referensi',
+      daysAbbr: 'hari', rateLabel: 'Tarif', totalLabel: 'Subtotal',
+      summaryEyebrow: 'Ringkasan biaya',
+      subtotal: 'Subtotal', discount: 'Diskon',
+      grandTotal: 'Total', paymentHeading: 'Termin pembayaran',
+      bankHeading: 'Detail bank', notesHeading: 'Catatan & asumsi', termsHeading: 'Syarat & ketentuan',
+      ftQuotation: 'Penawaran', ftIssued: 'Diterbitkan', ftContact: 'Kontak',
+      payInstruction: 'Mohon transfer ke rekening berikut setelah penerimaan penawaran ini.'
+    },
+    en: {
+      exportPdf: 'Download PDF', uploadLogo: 'Upload logo',
+      ourCompany: 'Your studio', companyName: 'Studio name', address: 'Address', email: 'Email', phone: 'Phone', taxId: 'Tax ID',
+      clientInfo: 'Client', recipient: 'Recipient', clientCompany: 'Company',
+      quoteDetails: 'Details', projectName: 'Project name', quoteNo: 'Number', date: 'Issued', validUntil: 'Valid until', currency: 'Currency',
+      scope: 'Scope', addScope: 'Add scope',
+      scopeDetails: 'Scope details', deliverables: 'Deliverables',
+      modeBreakdown: 'Breakdown', modePackage: 'Package',
+      packagePrice: 'Package price',
+      adjustments: 'Adjustments', showDiscount: 'Discount', discountType: 'Type', value: 'Value', fixed: 'Fixed',
+      showTax: 'Tax', taxLabel: 'Label', taxRate: 'Rate %',
+      payment: 'Payment', addTerm: 'Add term', bank: 'Bank',
+      extras: 'Extras', notes: 'Notes', terms: 'Terms & conditions',
+      a4Preview: 'A4 — auto-saved',
+      eyebrowQuote: 'Quotation',
+      titlePart1: 'Project', titlePart2: 'quotation',
+      preparedFor: 'Prepared for', preparedBy: 'Prepared by',
+      issuedOn: 'Issued on', validUntilDoc: 'Valid until', quoteRefDoc: 'Reference',
+      daysAbbr: 'days', rateLabel: 'Rate', totalLabel: 'Subtotal',
+      summaryEyebrow: 'Cost summary',
+      subtotal: 'Subtotal', discount: 'Discount',
+      grandTotal: 'Total', paymentHeading: 'Payment terms',
+      bankHeading: 'Bank details', notesHeading: 'Notes & assumptions', termsHeading: 'Terms & conditions',
+      ftQuotation: 'Quotation', ftIssued: 'Issued', ftContact: 'Contact',
+      payInstruction: 'Please remit to the following account upon acceptance of this quotation.'
+    }
+  };
+
+  const state = {
+    lang: 'id', logo: null,
+    our: { name: '', address: '', email: '', phone: '', tax: '' },
+    client: { name: '', company: '', email: '', phone: '', address: '' },
+    meta: { project: '', no: '', date: new Date().toISOString().slice(0,10), valid: '', currency: 'IDR' },
+    pricingMode: 'breakdown',
+    packagePrice: 0,
+    scopes: [{ scope: '', details: '', deliverables: [''], days: 1, unit: 0 }],
+    showDiscount: false, discount: { type: 'percent', value: 0 },
+    showTax: true, tax: { label: 'PPN', rate: 11 },
+    payments: [{ label: '', type: 'percent', value: 50 }],
+    bank: '', notes: '', terms: ''
+  };
+
+  const SAVE_KEY = 'natuno-quote-v2';
+  function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch(e){} }
+  function load() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (raw) Object.assign(state, JSON.parse(raw));
+    } catch(e){}
+    // Always normalize scope shape defensively
+    try {
+      state.scopes = (Array.isArray(state.scopes) ? state.scopes : []).map(s => {
+        s = s || {};
+        let deliverables;
+        if (Array.isArray(s.deliverables)) {
+          deliverables = s.deliverables;
+        } else {
+          deliverables = [''];
+        }
+        let details = typeof s.details === 'string' ? s.details : '';
+        // If old shape had `deliverables` as string and no details, migrate it
+        if (!details && typeof s.deliverables === 'string') details = s.deliverables;
+        return {
+          scope: typeof s.scope === 'string' ? s.scope : '',
+          details: details,
+          deliverables: deliverables,
+          days: Number(s.days) || 0,
+          unit: Number(s.unit) || 0
+        };
+      });
+      if (!state.scopes.length) state.scopes = [{ scope: '', details: '', deliverables: [''], days: 1, unit: 0 }];
+    } catch(e){
+      state.scopes = [{ scope: '', details: '', deliverables: [''], days: 1, unit: 0 }];
+    }
+  }
+  load();
+
+  function t(k) { return (i18n[state.lang] && i18n[state.lang][k]) || k; }
+  function fmt(n) {
+    n = Number(n) || 0;
+    const c = state.meta.currency;
+    if (c === 'IDR') return 'Rp ' + n.toLocaleString('id-ID', { maximumFractionDigits: 0 });
+    if (c === 'EUR') return '€ ' + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return '$ ' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function esc(s) { return (s||'').toString().replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+  function fmtDate(s) { if (!s) return '—'; try { return new Date(s).toLocaleDateString(state.lang === 'id' ? 'id-ID' : 'en-GB', { day: '2-digit', month: 'long', year: 'numeric' }); } catch(e) { return s; } }
+
+  function calc() {
+    const subtotal = state.pricingMode === 'package'
+      ? (Number(state.packagePrice)||0)
+      : state.scopes.reduce((s, r) => s + (Number(r.days)||0) * (Number(r.unit)||0), 0);
+    let discountAmt = state.showDiscount ? (state.discount.type === 'percent' ? subtotal * (Number(state.discount.value)||0) / 100 : (Number(state.discount.value)||0)) : 0;
+    const afterDiscount = subtotal - discountAmt;
+    const taxAmt = state.showTax ? afterDiscount * (Number(state.tax.rate)||0) / 100 : 0;
+    return { subtotal, discountAmt, afterDiscount, taxAmt, total: afterDiscount + taxAmt };
+  }
+
+  function applyI18n() {
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
+    document.querySelectorAll('#lang-toggle button').forEach(b => b.classList.toggle('active', b.dataset.lang === state.lang));
+  }
+
+  function renderScopes() {
+    const list = document.getElementById('scope-list');
+    document.getElementById('scope-count').textContent = String(state.scopes.length).padStart(2, '0');
+    list.innerHTML = '';
+    const isPackage = state.pricingMode === 'package';
+    state.scopes.forEach((row, i) => {
+      const total = (Number(row.days)||0) * (Number(row.unit)||0);
+      const el = document.createElement('div');
+      el.className = 'scope-card';
+      const priceFields = isPackage ? '' : `<div class="row2">
+            <div class="field"><label>${state.lang==='id'?'Hari':'Days'}</label><input type="number" min="0" step="0.5" data-k="days" data-i="${i}" value="${row.days}" /></div>
+            <div class="field"><label>${state.lang==='id'?'Tarif/hari':'Rate/day'}</label><input type="number" min="0" data-k="unit" data-i="${i}" value="${row.unit}" /></div>
+          </div>`;
+      const miniTotal = isPackage ? '' : `<span class="scope-total-mini"><b>${fmt(total)}</b></span>`;
+      const delivArr = Array.isArray(row.deliverables) ? row.deliverables : [''];
+      const delivItems = (delivArr.length ? delivArr : ['']).map((d, di) => `
+        <div class="deliv-row">
+          <span class="deliv-bullet">—</span>
+          <input data-dk="deliv" data-i="${i}" data-di="${di}" value="${esc(d)}" placeholder="${state.lang==='id'?'Deliverable':'Deliverable'}" />
+          <button class="icon-btn" data-act="del-deliv" data-i="${i}" data-di="${di}">×</button>
+        </div>`).join('');
+      el.innerHTML = `
+        <div class="scope-head">
+          <span class="scope-num">${String(i+1).padStart(2,'0')}.</span>
+          <div style="display:flex; align-items:center; gap:10px">
+            ${miniTotal}
+            <button class="icon-btn" data-act="del" data-i="${i}">×</button>
+          </div>
+        </div>
+        <div class="field"><input data-k="scope" data-i="${i}" value="${esc(row.scope)}" placeholder="${state.lang==='id'?'Nama lingkup':'Scope name'}" /></div>
+        <div class="field"><label data-i18n-inline="scopeDetails">${t('scopeDetails')}</label><textarea data-k="details" data-i="${i}" placeholder="${state.lang==='id'?'Penjelasan singkat...':'Brief description...'}">${esc(row.details||'')}</textarea></div>
+        <div class="deliv-section-label">${t('deliverables')}</div>
+        <div class="deliv-list">
+          ${delivItems}
+          <button class="deliv-add" data-act="add-deliv" data-i="${i}">+ ${state.lang==='id'?'Tambah deliverable':'Add deliverable'}</button>
+        </div>
+        ${priceFields}
+      `;
+      list.appendChild(el);
+    });
+
+    // text/number inputs (scope, details, days, unit)
+    list.querySelectorAll('input[data-k], textarea[data-k]').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const i = +e.target.dataset.i, k = e.target.dataset.k;
+        state.scopes[i][k] = (k === 'days' || k === 'unit') ? Number(e.target.value)||0 : e.target.value;
+        save();
+        const card = e.target.closest('.scope-card');
+        if (card && !isPackage) {
+          const r = state.scopes[i];
+          const total = (Number(r.days)||0) * (Number(r.unit)||0);
+          const b = card.querySelector('.scope-total-mini b'); if (b) b.textContent = fmt(total);
+        }
+        renderDoc();
+      });
+    });
+
+    // deliverable inputs
+    list.querySelectorAll('input[data-dk]').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const i = +e.target.dataset.i, di = +e.target.dataset.di;
+        if (!Array.isArray(state.scopes[i].deliverables)) state.scopes[i].deliverables = [''];
+        state.scopes[i].deliverables[di] = e.target.value;
+        save(); renderDoc();
+      });
+    });
+
+    // add deliverable
+    list.querySelectorAll('[data-act="add-deliv"]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const i = +e.currentTarget.dataset.i;
+        if (!Array.isArray(state.scopes[i].deliverables)) state.scopes[i].deliverables = [];
+        state.scopes[i].deliverables.push('');
+        save(); renderScopes(); renderDoc();
+      });
+    });
+
+    // remove deliverable
+    list.querySelectorAll('[data-act="del-deliv"]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const i = +e.currentTarget.dataset.i, di = +e.currentTarget.dataset.di;
+        if (!Array.isArray(state.scopes[i].deliverables)) return;
+        state.scopes[i].deliverables.splice(di, 1);
+        if (state.scopes[i].deliverables.length === 0) state.scopes[i].deliverables = [''];
+        save(); renderScopes(); renderDoc();
+      });
+    });
+
+    // remove scope
+    list.querySelectorAll('[data-act="del"]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const i = +e.currentTarget.dataset.i;
+        if (state.scopes.length > 1) { state.scopes.splice(i, 1); save(); renderScopes(); renderDoc(); }
+      });
+    });
+
+    const pkgWrap = document.getElementById('package-price-wrap');
+    if (pkgWrap) pkgWrap.style.display = isPackage ? 'block' : 'none';
+  }
+
+  function renderPayments() {
+    const list = document.getElementById('payment-list');
+    document.getElementById('payment-count').textContent = String(state.payments.length).padStart(2, '0');
+    list.innerHTML = '';
+    state.payments.forEach((p, i) => {
+      const el = document.createElement('div');
+      el.className = 'scope-card';
+      el.innerHTML = `
+        <div class="scope-head">
+          <span class="scope-num">${String(i+1).padStart(2,'0')}.</span>
+          <button class="icon-btn" data-act="del-pay" data-i="${i}">×</button>
+        </div>
+        <div class="field"><input data-pk="label" data-i="${i}" value="${esc(p.label)}" placeholder="${state.lang==='id'?'Uang muka, Pelunasan...':'Upfront, Final, etc.'}" /></div>
+        <div class="row2">
+          <div class="field"><label>${state.lang==='id'?'Tipe':'Type'}</label><select data-pk="type" data-i="${i}"><option value="percent" ${p.type==='percent'?'selected':''}>%</option><option value="fixed" ${p.type==='fixed'?'selected':''}>${t('fixed')}</option></select></div>
+          <div class="field"><label>${state.lang==='id'?'Nilai':'Value'}</label><input type="number" data-pk="value" data-i="${i}" value="${p.value}" /></div>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+    list.querySelectorAll('input[data-pk], select[data-pk]').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const i = +e.target.dataset.i, k = e.target.dataset.pk;
+        state.payments[i][k] = (k === 'value') ? Number(e.target.value)||0 : e.target.value;
+        save(); renderDoc();
+      });
+    });
+    list.querySelectorAll('[data-act="del-pay"]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const i = +e.currentTarget.dataset.i;
+        state.payments.splice(i, 1);
+        if (state.payments.length === 0) state.payments.push({ label: '', type: 'percent', value: 100 });
+        save(); renderPayments(); renderDoc();
+      });
+    });
+  }
+
+  function renderDoc() {
+    try {
+      _renderDoc();
+    } catch (err) {
+      console.error('renderDoc error:', err);
+      document.getElementById('doc').innerHTML = '<div style="padding:24px; color:#c1440e; font-family:monospace; font-size:11px">Render error: ' + esc(err.message || String(err)) + '<br><br>Check the console for details. Try clicking Reset (↻) to clear data.</div>';
+    }
+  }
+  function _renderDoc() {
+    const c = calc();
+    const doc = document.getElementById('doc');
+
+    const logoHTML = state.logo
+      ? `<img class="doc-logo" src="${state.logo}" />`
+      : `<div class="doc-logo-text">${esc(state.our.name) || 'Studio'}<em>.</em></div>`;
+
+    const clientBody = [state.client.address, state.client.email, state.client.phone].filter(Boolean).join('\n');
+    const ourBody = [state.our.address, state.our.email, state.our.phone, state.our.tax].filter(Boolean).join('\n');
+
+    const isPackage = state.pricingMode === 'package';
+    const renderDeliv = (arr) => {
+      if (!Array.isArray(arr)) return '';
+      const items = arr.filter(d => d && d.trim());
+      if (!items.length) return '';
+      return `<ul class="s-deliv">${items.map(d => `<li>${esc(d)}</li>`).join('')}</ul>`;
+    };
+    const scopesHTML = state.scopes.map((r, i) => {
+      const total = (Number(r.days)||0) * (Number(r.unit)||0);
+      const details = r.details ? `<div class="s-desc">${esc(r.details)}</div>` : '';
+      const deliv = renderDeliv(r.deliverables);
+      if (isPackage) {
+        return `
+        <div class="scope-item package">
+          <div class="s-num">${String(i+1).padStart(2,'0')}</div>
+          <div class="s-content">
+            <div class="s-title">${esc(r.scope) || '—'}</div>
+            ${details}
+            ${deliv}
+          </div>
+        </div>`;
+      }
+      return `
+        <div class="scope-item">
+          <div class="s-num">${String(i+1).padStart(2,'0')}</div>
+          <div class="s-content">
+            <div class="s-title">${esc(r.scope) || '—'}</div>
+            ${details}
+            ${deliv}
+          </div>
+          <div class="s-meta">
+            <div class="s-meta-label">${t('daysAbbr')}</div>
+            <div class="s-meta-value">${r.days || 0}</div>
+          </div>
+          <div class="s-amount">
+            <div class="s-amount-label">${t('totalLabel')}</div>
+            <div class="s-amount-value">${fmt(total)}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+    let totalsRows = `<tr><td>${isPackage ? (state.lang==='id'?'Paket':'Package') : t('subtotal')}</td><td>${fmt(c.subtotal)}</td></tr>`;
+    if (state.showDiscount && c.discountAmt > 0) {
+      const lbl = state.discount.type === 'percent' ? `${t('discount')} (${state.discount.value}%)` : t('discount');
+      totalsRows += `<tr><td>${lbl}</td><td>−${fmt(c.discountAmt)}</td></tr>`;
+    }
+    if (state.showTax) {
+      totalsRows += `<tr class="divider"><td>${esc(state.tax.label)} (${state.tax.rate}%)</td><td>${fmt(c.taxAmt)}</td></tr>`;
+    }
+    totalsRows += `<tr class="total"><td>${t('grandTotal')}</td><td><em>${fmt(c.total)}</em></td></tr>`;
+
+    const paymentsHTML = state.payments.map((p, i) => {
+      const amt = p.type === 'percent' ? c.total * (Number(p.value)||0) / 100 : (Number(p.value)||0);
+      const lbl = p.label || `${state.lang==='id'?'Termin':'Term'} ${i+1}`;
+      const suffix = p.type === 'percent' ? ` · ${p.value}%` : '';
+      return `<div class="p-row"><div class="p-label">${esc(lbl)}${suffix}</div><div class="p-amount">${fmt(amt)}</div></div>`;
+    }).join('');
+
+    doc.innerHTML = `
+      <div class="doc-header">
+        ${logoHTML}
+        <div class="doc-mark-num">
+          <div class="label">${t('quoteRefDoc')}</div>
+          <div class="value">${esc(state.meta.no) || '—'}</div>
+        </div>
+      </div>
+
+      <div class="doc-title-block">
+        <div class="doc-eyebrow">${t('eyebrowQuote')}</div>
+        <h1 class="doc-title">${t('titlePart1')} <em>${t('titlePart2')}</em></h1>
+        ${state.meta.project ? `<div class="doc-subtitle">${esc(state.meta.project)}</div>` : ''}
+        <div class="doc-date-line">
+          <div class="doc-date-item">
+            <div class="label">${t('issuedOn')}</div>
+            <div class="value">${fmtDate(state.meta.date)}</div>
+          </div>
+          <div class="doc-date-item">
+            <div class="label">${t('validUntilDoc')}</div>
+            <div class="value">${fmtDate(state.meta.valid)}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="doc-info-grid">
+        <div>
+          <div class="doc-info-label">${t('preparedFor')}</div>
+          <div class="doc-info-name">${esc(state.client.name) || esc(state.client.company) || '—'}</div>
+          ${state.client.name && state.client.company ? `<div class="doc-info-name" style="font-weight:400; color:#6b6864">${esc(state.client.company)}</div>` : ''}
+          <div class="doc-info-body">${esc(clientBody)}</div>
+        </div>
+        <div>
+          <div class="doc-info-label">${t('preparedBy')}</div>
+          <div class="doc-info-name">${esc(state.our.name) || '—'}</div>
+          <div class="doc-info-body">${esc(ourBody)}</div>
+        </div>
+      </div>
+
+      <div class="doc-section-eyebrow">${isPackage ? (state.lang==='id'?'Termasuk dalam paket':"What's included") : (state.lang==='id'?'Lingkup pekerjaan':'Scope of work')}</div>
+      <h2 class="doc-section-heading">${state.meta.project ? esc(state.meta.project) : (state.lang==='id'?'Rincian lingkup pekerjaan':'Project breakdown')}</h2>
+      <div class="scope-list-doc">${scopesHTML}</div>
+
+      <div class="doc-totals-wrap">
+        <div class="doc-totals-aside">
+          <div class="label">${t('summaryEyebrow')}</div>
+          ${state.lang==='id'
+            ? `${isPackage ? 'Paket proyek dengan harga tetap meliputi seluruh lingkup di atas' : 'Total biaya proyek meliputi seluruh lingkup pekerjaan di atas'}${state.showTax ? `, termasuk ${esc(state.tax.label)} sebesar ${state.tax.rate}%` : ''}.`
+            : `${isPackage ? 'Fixed-price package covering all scope items above' : 'Total project cost covers all scope items above'}${state.showTax ? `, including ${esc(state.tax.label)} at ${state.tax.rate}%` : ''}.`}
+        </div>
+        <table class="doc-totals-table">${totalsRows}</table>
+      </div>
+
+      ${state.payments.length ? `
+        <div class="doc-block">
+          <div class="doc-block-grid">
+            <div class="doc-block-label">${t('paymentHeading')}</div>
+            <div class="doc-payment-list">${paymentsHTML}</div>
+          </div>
+        </div>` : ''}
+
+      ${state.bank ? `
+        <div class="doc-block">
+          <div class="doc-block-grid">
+            <div class="doc-block-label">${t('bankHeading')}</div>
+            <div class="doc-block-body">${t('payInstruction')}\n\n${esc(state.bank)}</div>
+          </div>
+        </div>` : ''}
+
+      ${state.notes ? `
+        <div class="doc-block">
+          <div class="doc-block-grid">
+            <div class="doc-block-label">${t('notesHeading')}</div>
+            <div class="doc-block-body">${esc(state.notes)}</div>
+          </div>
+        </div>` : ''}
+
+      ${state.terms ? `
+        <div class="doc-block">
+          <div class="doc-block-grid">
+            <div class="doc-block-label">${t('termsHeading')}</div>
+            <div class="doc-block-body">${esc(state.terms)}</div>
+          </div>
+        </div>` : ''}
+
+      <div class="doc-footer">
+        <div>
+          <div class="ft-label">${t('ftQuotation')}</div>
+          <div class="ft-value">${esc(state.meta.no) || '—'}</div>
+        </div>
+        <div>
+          <div class="ft-label">${t('ftIssued')}</div>
+          <div class="ft-value">${fmtDate(state.meta.date)}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="ft-label">${t('ftContact')}</div>
+          <div class="ft-value accent">${esc(state.our.email) || '—'}</div>
+        </div>
+      </div>
+    `;
+    doc.dataset.rendered = '1';
+  }
+
+  function bind(id, path) {
+    const el = document.getElementById(id); if (!el) return;
+    const parts = path.split('.');
+    let cur = state; for (let i=0;i<parts.length-1;i++) cur = cur[parts[i]];
+    el.value = cur[parts[parts.length-1]] || '';
+    el.addEventListener('input', e => {
+      let c = state;
+      for (let i=0;i<parts.length-1;i++) c = c[parts[i]];
+      c[parts[parts.length-1]] = el.type === 'number' ? Number(e.target.value)||0 : e.target.value;
+      save();
+      if (id === 'currency') { renderScopes(); renderPayments(); }
+      renderDoc();
+    });
+  }
+
+  function init() {
+    ['our-name:our.name','our-address:our.address','our-email:our.email','our-phone:our.phone','our-tax:our.tax',
+     'client-name:client.name','client-company:client.company','client-email:client.email','client-phone:client.phone','client-address:client.address',
+     'project-name:meta.project','quote-no:meta.no','quote-date:meta.date','quote-valid:meta.valid','currency:meta.currency',
+     'package-price:packagePrice',
+     'discount-type:discount.type','discount-value:discount.value','tax-label:tax.label','tax-rate:tax.rate',
+     'bank-details:bank','notes:notes','terms:terms'
+    ].forEach(p => { const [id, path] = p.split(':'); bind(id, path); });
+
+    document.getElementById('logo-input').addEventListener('change', e => {
+      const file = e.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        state.logo = ev.target.result;
+        document.getElementById('logo-preview').src = state.logo;
+        document.getElementById('logo-preview').style.display = 'block';
+        document.getElementById('logo-text').style.display = 'none';
+        save(); renderDoc();
+      };
+      reader.readAsDataURL(file);
+    });
+    if (state.logo) {
+      document.getElementById('logo-preview').src = state.logo;
+      document.getElementById('logo-preview').style.display = 'block';
+      document.getElementById('logo-text').style.display = 'none';
+    }
+
+    const swD = document.getElementById('sw-discount'), swT = document.getElementById('sw-tax');
+    swD.classList.toggle('on', state.showDiscount);
+    swT.classList.toggle('on', state.showTax);
+    document.getElementById('discount-fields').style.display = state.showDiscount ? 'block' : 'none';
+    document.getElementById('tax-fields').style.display = state.showTax ? 'block' : 'none';
+    swD.addEventListener('click', () => {
+      state.showDiscount = !state.showDiscount;
+      swD.classList.toggle('on', state.showDiscount);
+      document.getElementById('discount-fields').style.display = state.showDiscount ? 'block' : 'none';
+      save(); renderDoc();
+    });
+    swT.addEventListener('click', () => {
+      state.showTax = !state.showTax;
+      swT.classList.toggle('on', state.showTax);
+      document.getElementById('tax-fields').style.display = state.showTax ? 'block' : 'none';
+      save(); renderDoc();
+    });
+
+    document.getElementById('add-scope').addEventListener('click', () => {
+      state.scopes.push({ scope: '', details: '', deliverables: [''], days: 1, unit: 0 });
+      save(); renderScopes(); renderDoc();
+    });
+    document.getElementById('add-payment').addEventListener('click', () => {
+      state.payments.push({ label: '', type: 'percent', value: 0 });
+      save(); renderPayments(); renderDoc();
+    });
+
+    document.querySelectorAll('#pricing-mode button').forEach(b => {
+      b.classList.toggle('active', state.pricingMode === b.dataset.mode);
+      b.addEventListener('click', () => {
+        state.pricingMode = b.dataset.mode;
+        document.querySelectorAll('#pricing-mode button').forEach(x => x.classList.toggle('active', x.dataset.mode === state.pricingMode));
+        save(); renderScopes(); renderDoc();
+      });
+    });
+
+    document.querySelectorAll('#lang-toggle button').forEach(b => {
+      b.addEventListener('click', () => {
+        state.lang = b.dataset.lang;
+        save(); applyI18n(); renderScopes(); renderPayments(); renderDoc();
+      });
+    });
+
+    document.getElementById('btn-pdf').addEventListener('click', () => {
+      try {
+        // The @media print stylesheet already hides the side panel and
+        // formats the doc for A4 — no iframe needed.
+        window.print();
+      } catch (err) {
+        console.error('Print failed:', err);
+        alert(state.lang === 'id'
+          ? 'Gagal membuka dialog cetak. Tekan Ctrl+P (atau Cmd+P di Mac) untuk mencetak.'
+          : 'Could not open print dialog. Press Ctrl+P (or Cmd+P on Mac) to print.');
+      }
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      if (confirm(state.lang === 'id' ? 'Hapus semua data?' : 'Clear all data?')) {
+        localStorage.removeItem(SAVE_KEY); location.reload();
+      }
+    });
+
+    applyI18n(); renderScopes(); renderPayments(); renderDoc();
+  }
+
+  try {
+    init();
+  } catch (err) {
+    console.error('Init failed:', err);
+    // Last-resort recovery: clear corrupted state and reload
+    var msg = 'The app failed to start (' + (err.message || 'unknown error') + ').\n\nClick OK to clear saved data and reload, or Cancel to inspect the console.';
+    if (confirm(msg)) {
+      try { localStorage.removeItem(SAVE_KEY); } catch(e){}
+      location.reload();
+    }
+  }
+})();
+</script>
+
+</body>
+</html>
