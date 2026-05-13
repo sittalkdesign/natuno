@@ -24,6 +24,10 @@
     .scope-item .s-meta, .scope-item .s-amount { grid-column: 2; text-align: left !important; display: flex; gap: 8px; align-items: baseline; }
     .doc-footer { grid-template-columns: 1fr !important; gap: 12px !important; }
     .doc-footer > div:last-child { text-align: left !important; }
+    .timeline-table tbody td.tl-week { min-width: 16px; }
+    .timeline-table thead th { font-size: 8px; }
+    .timeline-table tbody td.tl-phase { font-size: 10px; padding-right: 8px; }
+    .timeline-table thead th.tl-phase-head { min-width: 90px; }
   }
 
   /* LEFT PANEL */
@@ -188,6 +192,34 @@
   .doc-footer .ft-value { color: #1a1a1a; font-size: 10px; }
   .doc-footer .ft-value.accent { color: #c1440e; }
 
+
+  /* TIMELINE */
+  .timeline-table-wrap { margin-bottom: 40px; overflow-x: auto; }
+  .timeline-meta-line { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+  .timeline-meta-line .label { font-size: 9px; color: #c1440e; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
+  .timeline-meta-line .total { font-size: 10px; color: #7a7770; }
+  .timeline-meta-line .total b { font-family: 'Fraunces', Georgia, serif; font-style: italic; color: #1a1a1a; font-size: 13px; font-weight: 400; }
+  .timeline-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+  .timeline-table thead th { font-weight: 500; padding: 6px 0; text-align: center; font-size: 9px; color: #a8a59c; border-bottom: 1px solid #1a1a1a; font-family: 'Fraunces', Georgia, serif; font-style: italic; }
+  .timeline-table thead th.tl-phase-head { text-align: left; padding-left: 0; min-width: 140px; font-style: normal; font-family: inherit; text-transform: uppercase; font-size: 9px; letter-spacing: 0.08em; color: #1a1a1a; font-weight: 600; }
+  .timeline-table tbody td { height: 32px; border-bottom: 1px solid #f0eee7; vertical-align: middle; }
+  .timeline-table tbody td.tl-phase { padding: 0 16px 0 0; font-size: 11px; color: #1a1a1a; font-weight: 500; }
+  .timeline-table tbody td.tl-week { position: relative; min-width: 22px; border-left: 1px solid #f5f4f0; padding: 0; }
+  .timeline-table tbody td.tl-week:first-of-type { border-left: 1px solid #eae8e1; }
+  .timeline-table tbody td.tl-week.tl-active::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); height: 9px; background: #c1440e; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .timeline-table tbody td.tl-week.tl-start::after { left: 3px; border-radius: 9px 0 0 9px; }
+  .timeline-table tbody td.tl-week.tl-end::after { right: 3px; border-radius: 0 9px 9px 0; }
+  .timeline-table tbody td.tl-week.tl-start.tl-end::after { left: 3px; right: 3px; border-radius: 9px; }
+  .timeline-table tbody tr:last-child td { border-bottom: 1px solid #1a1a1a; }
+
+  /* Side panel phase row */
+  .phase-mini { display: grid; grid-template-columns: 1fr 56px 56px 24px; gap: 8px; align-items: end; padding: 8px 0; border-bottom: 1px solid #f0eee7; }
+  .phase-mini:last-of-type { border-bottom: none; }
+  .phase-mini input { font-family: inherit; font-size: 12px; color: #1a1a1a; background: transparent; border: none; border-bottom: 1px solid #eae8e1; padding: 4px 0; outline: none; width: 100%; }
+  .phase-mini input:focus { border-bottom-color: #1a1a1a; }
+  .phase-mini input.tl-num { text-align: center; font-family: 'Fraunces', Georgia, serif; font-size: 13px; }
+  .phase-mini .icon-btn { align-self: center; }
+
   @media print {
     @page { size: A4; margin: 0; }
     html, body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -195,7 +227,8 @@
     .preview-wrap { padding: 0 !important; max-height: none !important; overflow: visible !important; background: #fff !important; }
     .app { display: block !important; }
     .doc { box-shadow: none !important; padding: 48px 56px !important; max-width: none !important; width: 100% !important; min-height: auto !important; margin: 0 !important; page-break-inside: auto; }
-    .scope-item, .doc-block { page-break-inside: avoid; }
+    .scope-item, .doc-block, .timeline-table-wrap { page-break-inside: avoid; }
+    .timeline-table tbody td.tl-week.tl-active::after { background: #c1440e !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   }
 </style>
 
@@ -282,6 +315,18 @@
       </div>
 
       <div class="section">
+        <div class="section-head">
+          <p class="section-title" data-i18n="timeline">Timeline</p>
+          <span class="section-meta" id="timeline-count">00</span>
+        </div>
+        <div class="toggle-row"><span data-i18n="showTimeline">Show timeline</span><div class="switch" id="sw-timeline"></div></div>
+        <div id="timeline-fields" style="display:none">
+          <div id="timeline-list"></div>
+          <button class="add-btn" id="add-phase">+ <span data-i18n="addPhase">Add phase</span></button>
+        </div>
+      </div>
+
+      <div class="section">
         <div class="section-head"><p class="section-title" data-i18n="adjustments">Adjustments</p></div>
         <div class="toggle-row"><span data-i18n="showDiscount">Discount</span><div class="switch" id="sw-discount"></div></div>
         <div id="discount-fields" style="display:none">
@@ -353,6 +398,10 @@ window.addEventListener('error', function(e) {
       packagePrice: 'Harga paket',
       adjustments: 'Penyesuaian', showDiscount: 'Diskon', discountType: 'Tipe', value: 'Nilai', fixed: 'Tetap',
       showTax: 'Pajak', taxLabel: 'Label', taxRate: 'Tarif %',
+      timeline: 'Linimasa', showTimeline: 'Tampilkan linimasa', addPhase: 'Tambah fase',
+      phase: 'Fase', startWeek: 'Mulai', durationWeeks: 'Durasi', weekAbbr: 'M',
+      timelineEyebrow: 'Linimasa', timelineHeading: 'Linimasa proyek',
+      totalDuration: 'Total durasi', weeksUnit: 'minggu',
       payment: 'Pembayaran', addTerm: 'Tambah termin', bank: 'Rekening',
       extras: 'Tambahan', notes: 'Catatan', terms: 'Syarat & ketentuan',
       a4Preview: 'A4 — tersimpan otomatis',
@@ -379,6 +428,10 @@ window.addEventListener('error', function(e) {
       packagePrice: 'Package price',
       adjustments: 'Adjustments', showDiscount: 'Discount', discountType: 'Type', value: 'Value', fixed: 'Fixed',
       showTax: 'Tax', taxLabel: 'Label', taxRate: 'Rate %',
+      timeline: 'Timeline', showTimeline: 'Show timeline', addPhase: 'Add phase',
+      phase: 'Phase', startWeek: 'Start', durationWeeks: 'Weeks', weekAbbr: 'W',
+      timelineEyebrow: 'Timeline', timelineHeading: 'Project timeline',
+      totalDuration: 'Total duration', weeksUnit: 'weeks',
       payment: 'Payment', addTerm: 'Add term', bank: 'Bank',
       extras: 'Extras', notes: 'Notes', terms: 'Terms & conditions',
       a4Preview: 'A4 — auto-saved',
@@ -406,6 +459,8 @@ window.addEventListener('error', function(e) {
     scopes: [{ scope: '', details: '', deliverables: [''], days: 1, unit: 0 }],
     showDiscount: false, discount: { type: 'percent', value: 0 },
     showTax: true, tax: { label: 'PPN', rate: 11 },
+    showTimeline: false,
+    timeline: [{ label: '', startWeek: 1, weeks: 2 }],
     payments: [{ label: '', type: 'percent', value: 50 }],
     bank: '', notes: '', terms: ''
   };
@@ -441,6 +496,19 @@ window.addEventListener('error', function(e) {
       if (!state.scopes.length) state.scopes = [{ scope: '', details: '', deliverables: [''], days: 1, unit: 0 }];
     } catch(e){
       state.scopes = [{ scope: '', details: '', deliverables: [''], days: 1, unit: 0 }];
+    }
+    // Timeline normalization (backward-compat)
+    try {
+      if (typeof state.showTimeline !== 'boolean') state.showTimeline = false;
+      state.timeline = (Array.isArray(state.timeline) ? state.timeline : []).map(p => ({
+        label: typeof (p && p.label) === 'string' ? p.label : '',
+        startWeek: Number(p && p.startWeek) || 1,
+        weeks: Number(p && p.weeks) || 1
+      }));
+      if (!state.timeline.length) state.timeline = [{ label: '', startWeek: 1, weeks: 2 }];
+    } catch(e) {
+      state.showTimeline = false;
+      state.timeline = [{ label: '', startWeek: 1, weeks: 2 }];
     }
   }
   load();
@@ -608,7 +676,39 @@ window.addEventListener('error', function(e) {
     });
   }
 
-  function renderDoc() {
+  function renderTimeline() {
+    const list = document.getElementById('timeline-list');
+    document.getElementById('timeline-count').textContent = String(state.timeline.length).padStart(2, '0');
+    list.innerHTML = '';
+    state.timeline.forEach((p, i) => {
+      const el = document.createElement('div');
+      el.className = 'phase-mini';
+      el.innerHTML = `
+        <input data-tk="label" data-i="${i}" value="${esc(p.label)}" placeholder="${state.lang==='id'?'Nama fase':'Phase name'}" />
+        <input type="number" min="1" class="tl-num" data-tk="startWeek" data-i="${i}" value="${p.startWeek}" title="${t('startWeek')}" />
+        <input type="number" min="1" class="tl-num" data-tk="weeks" data-i="${i}" value="${p.weeks}" title="${t('durationWeeks')}" />
+        <button class="icon-btn" data-act="del-phase" data-i="${i}">×</button>
+      `;
+      list.appendChild(el);
+    });
+    list.querySelectorAll('input[data-tk]').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const i = +e.target.dataset.i, k = e.target.dataset.tk;
+        state.timeline[i][k] = (k === 'startWeek' || k === 'weeks') ? Math.max(1, Number(e.target.value)||1) : e.target.value;
+        save(); renderDoc();
+      });
+    });
+    list.querySelectorAll('[data-act="del-phase"]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const i = +e.currentTarget.dataset.i;
+        state.timeline.splice(i, 1);
+        if (state.timeline.length === 0) state.timeline.push({ label: '', startWeek: 1, weeks: 2 });
+        save(); renderTimeline(); renderDoc();
+      });
+    });
+  }
+
+    function renderDoc() {
     try {
       _renderDoc();
     } catch (err) {
@@ -685,6 +785,50 @@ window.addEventListener('error', function(e) {
       return `<div class="p-row"><div class="p-label">${esc(lbl)}${suffix}</div><div class="p-amount">${fmt(amt)}</div></div>`;
     }).join('');
 
+    // Build timeline HTML
+    let timelineHTML = '';
+    if (state.showTimeline && Array.isArray(state.timeline) && state.timeline.length) {
+      const maxWeek = state.timeline.reduce((mx, p) => {
+        const s = Number(p.startWeek)||1, w = Number(p.weeks)||0;
+        return Math.max(mx, s + w - 1);
+      }, 0);
+      if (maxWeek > 0) {
+        const weekHeaders = Array.from({length: maxWeek}, (_, i) =>
+          `<th class="tl-week-head">${t('weekAbbr')}${i+1}</th>`).join('');
+        const rows = state.timeline.map((p, idx) => {
+          const start = Number(p.startWeek)||1;
+          const dur = Number(p.weeks)||0;
+          const end = start + dur - 1;
+          const cells = Array.from({length: maxWeek}, (_, i) => {
+            const w = i + 1;
+            const active = dur > 0 && w >= start && w <= end;
+            const cls = ['tl-week'];
+            if (active) {
+              cls.push('tl-active');
+              if (w === start) cls.push('tl-start');
+              if (w === end) cls.push('tl-end');
+            }
+            return `<td class="${cls.join(' ')}"></td>`;
+          }).join('');
+          const lbl = (p.label && p.label.trim()) ? p.label : `${t('phase')} ${idx+1}`;
+          return `<tr><td class="tl-phase">${esc(lbl)}</td>${cells}</tr>`;
+        }).join('');
+        timelineHTML = `
+          <div class="doc-section-eyebrow">${t('timelineEyebrow')}</div>
+          <h2 class="doc-section-heading">${t('timelineHeading')}</h2>
+          <div class="timeline-table-wrap">
+            <div class="timeline-meta-line">
+              <span class="label">${t('totalDuration')}</span>
+              <span class="total"><b>${maxWeek}</b> ${t('weeksUnit')}</span>
+            </div>
+            <table class="timeline-table">
+              <thead><tr><th class="tl-phase-head">${t('phase')}</th>${weekHeaders}</tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>`;
+      }
+    }
+
     doc.innerHTML = `
       <div class="doc-header">
         ${logoHTML}
@@ -727,6 +871,8 @@ window.addEventListener('error', function(e) {
       <div class="doc-section-eyebrow">${isPackage ? (state.lang==='id'?'Termasuk dalam paket':"What's included") : (state.lang==='id'?'Lingkup pekerjaan':'Scope of work')}</div>
       <h2 class="doc-section-heading">${state.meta.project ? esc(state.meta.project) : (state.lang==='id'?'Rincian lingkup pekerjaan':'Project breakdown')}</h2>
       <div class="scope-list-doc">${scopesHTML}</div>
+
+      ${timelineHTML}
 
       <div class="doc-totals-wrap">
         <div class="doc-totals-aside">
@@ -848,7 +994,25 @@ window.addEventListener('error', function(e) {
       save(); renderDoc();
     });
 
-    document.getElementById('add-scope').addEventListener('click', () => {
+    // Timeline switch
+    const swTL = document.getElementById('sw-timeline');
+    swTL.classList.toggle('on', state.showTimeline);
+    document.getElementById('timeline-fields').style.display = state.showTimeline ? 'block' : 'none';
+    swTL.addEventListener('click', () => {
+      state.showTimeline = !state.showTimeline;
+      swTL.classList.toggle('on', state.showTimeline);
+      document.getElementById('timeline-fields').style.display = state.showTimeline ? 'block' : 'none';
+      save(); renderDoc();
+    });
+
+    document.getElementById('add-phase').addEventListener('click', () => {
+      const last = state.timeline[state.timeline.length - 1];
+      const nextStart = last ? (Number(last.startWeek)||1) + (Number(last.weeks)||0) : 1;
+      state.timeline.push({ label: '', startWeek: nextStart, weeks: 1 });
+      save(); renderTimeline(); renderDoc();
+    });
+
+        document.getElementById('add-scope').addEventListener('click', () => {
       state.scopes.push({ scope: '', details: '', deliverables: [''], days: 1, unit: 0 });
       save(); renderScopes(); renderDoc();
     });
@@ -869,7 +1033,7 @@ window.addEventListener('error', function(e) {
     document.querySelectorAll('#lang-toggle button').forEach(b => {
       b.addEventListener('click', () => {
         state.lang = b.dataset.lang;
-        save(); applyI18n(); renderScopes(); renderPayments(); renderDoc();
+        save(); applyI18n(); renderScopes(); renderTimeline(); renderPayments(); renderDoc();
       });
     });
 
@@ -892,7 +1056,7 @@ window.addEventListener('error', function(e) {
       }
     });
 
-    applyI18n(); renderScopes(); renderPayments(); renderDoc();
+    applyI18n(); renderScopes(); renderTimeline(); renderPayments(); renderDoc();
   }
 
   try {
